@@ -1,38 +1,47 @@
 variables:
-  - group: ENV_GROUP  # Tartalma: APP_ENV: "prod", LIMIT: 5
-  - name: dynamicVal
-    value: $[format('{0}_{1}', variables['APP_ENV'], 100)]  # prod_100
+  - group: ENV_GROUP  # Contents: APP_ENV: "prod", LIMIT: 5. These are runtime variables.
+  # REMOVED: This global 'dynamicVal' definition.
+  # 'format()' is a template function, and 'APP_ENV' from a variable group is a runtime variable.
+  # You cannot use template functions on runtime variables at the global 'variables' block.
+  # The stage/job level 'dynamicVal' overrides will handle the dynamic value.
+  # - name: dynamicVal
+  #   value: $[format('{0}_{1}', variables['APP_ENV'], 100)]
+
+  # CORRECTED: 'div(64, 8)' is a constant calculation, so just use the direct value or a template expression.
+  # For simplicity, setting it directly to 8. If you want the function, use ${{ div(64, 8) }}
   - name: pInput
-    value: $[ div(64, 8) ]  # 8
+    value: 8
 
 stages:
 - stage: Alpha
   variables:
-    dynamicVal: "ALPHA_OVERRIDE"           # Stage override (macro)
+    dynamicVal: "ALPHA_OVERRIDE"      # Stage override (macro variable, evaluated at compile time)
   jobs:
   - job: Decide
     steps:
     - bash: |
-        if [[ "${{ variables.pInput }}" -gt $(LIMIT) ]]; then
+        # CORRECTED: Access runtime variables 'pInput' and 'LIMIT' using $(...)
+        if [[ "$(pInput)" -gt $(LIMIT) ]]; then
           echo "##vso[task.setvariable variable=decision;isOutput=true]HIGH"
         else
           echo "##vso[task.setvariable variable=decision;isOutput=true]LOW"
         fi
       name: SetDecision
-    - script: echo "1) Alpha dynamicVal -> $(dynamicVal)"
+    - script: echo "1) Alpha dynamicVal -> $(dynamicVal)" # Correct syntax for runtime var
 
 - stage: Beta
   dependsOn: Alpha
   variables:
-    dynamicVal: "BETA_$[ dependencies.Alpha.outputs['Decide.SetDecision.decision'] ]"  # runtime
+    # This is a runtime expression, correctly accessing output from a previous job.
+    dynamicVal: "BETA_$[ dependencies.Alpha.outputs['Decide.SetDecision.decision'] ]"
   jobs:
   - job: Process
     variables:
-      LIMIT: 7   # job-level override
+      LIMIT: 7   # Job-level override (macro variable)
     steps:
     - script: echo "2) Beta dynamicVal -> $(dynamicVal)"
     - script: echo "3) LIMIT -> $(LIMIT)"
-    - script: echo "4) APP_ENV ->${{ variables.APP_ENV }}"
+    - script: echo "4) APP_ENV ->$(APP_ENV)" # CORRECTED: APP_ENV is a runtime variable from ENV_GROUP, use $()
 
 - stage: Gamma
   dependsOn: Beta
@@ -40,9 +49,10 @@ stages:
   - job: TemplatedJob
     steps:
     - script: echo "5) Template base -> $(dynamicVal)_GAMMA"
-    - script: echo "6) APP_ENV -> ${{ variables.APP_ENV }}"
+    - script: echo "6) APP_ENV -> $(APP_ENV)" # CORRECTED: APP_ENV is a runtime variable, use $()
     - script: |
-        if [[ "${{ variables.APP_ENV }}" == "prod" ]]; then
+        # CORRECTED: APP_ENV is a runtime variable, use $()
+        if [[ "$(APP_ENV)" == "prod" ]]; then
           echo "7) Nested if: PROD"
         else
           echo "7) Nested if: OTHER"
@@ -55,7 +65,8 @@ stages:
   - deployment: Final
     environment: test
     variables:
-      dynamicVal: "DELTA_${{ variables.APP_ENV }}"
+      # CORRECTED: APP_ENV is a runtime variable from ENV_GROUP, use $()
+      dynamicVal: "DELTA_$(APP_ENV)"
     strategy:
       runOnce:
         deploy:
