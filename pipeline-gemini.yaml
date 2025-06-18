@@ -51,8 +51,10 @@ stages:
     buildFlavor: "Standard" # Szakasz szintű új változó
     
     # Szakasz szintű változó template feltétellel
-    stageSpecificSetting: ${{ if eq(parameters.buildType, 'Full') }}: 'DetailedLog'
-                           ${{ else }}: 'SummaryLog'
+    stageSpecificSetting: ${{ if eq(parameters.buildType, 'Full') }}: 
+                            'DetailedLog'
+                          ${{ else }}: 
+                            'SummaryLog'
 
   jobs:
   - job: Compile
