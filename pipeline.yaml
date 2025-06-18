@@ -19,7 +19,7 @@ stages:
           echo "##vso[task.setvariable variable=decision;isOutput=true]LOW"
         fi
       name: SetDecision
-    - script: echo "1) Alpha dynamicVal: $(dynamicVal)"
+    - script: echo "1) Alpha dynamicVal -> $(dynamicVal)"
 
 - stage: Beta
   dependsOn: Alpha
@@ -30,24 +30,24 @@ stages:
     variables:
       LIMIT: 7   # job-level override
     steps:
-    - script: echo "2) Beta dynamicVal: $(dynamicVal)"
-    - script: echo "3) LIMIT: $(LIMIT)"
-    - script: echo "4) APP_ENV: ${{ variables.APP_ENV }}"
+    - script: echo "2) Beta dynamicVal -> $(dynamicVal)"
+    - script: echo "3) LIMIT -> $(LIMIT)"
+    - script: echo "4) APP_ENV ->${{ variables.APP_ENV }}"
 
 - stage: Gamma
   dependsOn: Beta
   jobs:
   - job: TemplatedJob
     steps:
-    - script: echo "5) Template base: $(dynamicVal)_GAMMA"
-    - script: echo "6) APP_ENV: ${{ variables.APP_ENV }}"
+    - script: echo "5) Template base -> $(dynamicVal)_GAMMA"
+    - script: echo "6) APP_ENV -> ${{ variables.APP_ENV }}"
     - script: |
         if [[ "${{ variables.APP_ENV }}" == "prod" ]]; then
           echo "7) Nested if: PROD"
         else
           echo "7) Nested if: OTHER"
         fi
-    - script: echo "8) Concat: $(dynamicVal)_$(APP_ENV)"
+    - script: echo "8) Concat-> $(dynamicVal)_$(APP_ENV)"
 
 - stage: Delta
   dependsOn: Gamma
@@ -60,4 +60,4 @@ stages:
       runOnce:
         deploy:
           steps:
-          - script: echo "9) Final Val: $(dynamicVal)"
+          - script: echo "9) Final Val-> $(dynamicVal)"
