@@ -1,0 +1,211 @@
+# feladat.yaml - Rövidített versenyfeladat: Változóhatókörök és paraméterek
+#
+# Feladat: Jósold meg, mi lesz az OUTPUT az egyes 'echo' parancsok futása után!
+# Válassz az 5 lehetséges válasz közül minden kérdésnél.
+#
+# Előfeltétel: Hozz létre egy 'MyVariableGroup' nevű változócsoportot a Pipelines -> Library alatt,
+#              és add hozzá a következő változókat:
+#              - sharedFromGroup: "VG_Shared"
+#              - configMode: "PROD"
+
+################################################################################
+# PARAMÉTEREK ÉS GLOBÁLIS VÁLTOZÓK
+################################################################################
+parameters:
+  - name: buildType
+    displayName: Build típusa
+    type: string
+    default: 'Full'
+    values: ['Full', 'Quick']
+  - name: deployEnv
+    displayName: Deployment környezet
+    type: string
+    default: 'Dev'
+    values: ['Dev', 'QA', 'Prod']
+
+variables:
+  - group: MyVariableGroup # Tartalma: sharedFromGroup: "VG_Shared", configMode: "PROD"
+  - name: appVersion
+    value: "1.0.0" # Globális változó
+  - name: configStatus
+    # Globális változó template feltétellel
+    ${{ if eq(parameters.deployEnv, 'Prod') }}:
+      value: "Production"
+    ${{ else }}:
+      value: "NonProduction"
+
+trigger:
+  - none
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+################################################################################
+# SZAKASZOK (STAGES)
+################################################################################
+
+- stage: Build
+  displayName: 'Építés Szakasz'
+  variables:
+    appVersion: "1.0.1" # Szakasz szintű felülírás
+    buildFlavor: "Standard" # Szakasz szintű új változó
+    
+    # Szakasz szintű változó template feltétellel
+    stageSpecificSetting: ${{ if eq(parameters.buildType, 'Full') }}: 'DetailedLog'
+                           ${{ else }}: 'SummaryLog'
+
+  jobs:
+  - job: Compile
+    displayName: 'Fordítás Munka'
+    variables:
+      appVersion: "1.0.2" # Munka szintű felülírás
+      buildFlavor: "Optimized" # Munka szintű felülírás
+      jobTag: "J-001" # Új munka szintű változó
+
+    steps:
+    - script: echo "--- Fordítás Munka Változók ---"
+      displayName: 'Elválasztó'
+
+    # Kérdés 1: Mi lesz az 'appVersion' értéke?
+    # A) 1.0.0
+    # B) 1.0.1
+    # C) 1.0.2
+    # D) Függ a futási időtől
+    # E) Hiba
+    - script: echo "1) App Version: $(appVersion)"
+      displayName: 'App Verzió'
+
+    # Kérdés 2: Mi lesz a 'buildFlavor' értéke?
+    # A) Standard
+    # B) Optimized
+    # C) Függ a paramétertől
+    # D) Nincs definiálva
+    # E) Hiba
+    - script: echo "2) Build Flavor: $(buildFlavor)"
+      displayName: 'Build Íz'
+
+    # Kérdés 3: Mi lesz a 'jobTag' értéke?
+    # A) J-001
+    # B) Nincs definiálva
+    # C) Függ a szakaszból
+    # D) Hiba
+    # E) Üres string
+    - script: echo "3) Job Tag: $(jobTag)"
+      displayName: 'Munka Címke'
+
+    # Kérdés 4: Mi lesz a 'stageSpecificSetting' értéke az alapértelmezett paraméterekkel?
+    # A) DetailedLog
+    # B) SummaryLog
+    # C) Hiba
+    # D) Nincs definiálva
+    # E) Függ a futási időtől
+    - script: echo "4) Stage Specific Setting: $(stageSpecificSetting)"
+      displayName: 'Szakasz Beállítás'
+    
+    # Kérdés 5: Mi lesz a 'configStatus' értéke az alapértelmezett paraméterekkel?
+    # A) Production
+    # B) NonProduction
+    # C) Függ a változócsoporttól
+    # D) Hiba
+    # E) Üres string
+    - script: echo "5) Config Status: $(configStatus)"
+      displayName: 'Konfigurációs státusz'
+
+    # Kérdés 6: Mi lesz a 'sharedFromGroup' értéke?
+    # A) VG_Shared
+    # B) Nincs definiálva
+    # C) Függ a szakaszból
+    # D) Hiba
+    # E) Üres string
+    - script: echo "6) Shared from Group: $(sharedFromGroup)"
+      displayName: 'Csoportból megosztva'
+
+    # Kérdés 7: Ez a lépés futni fog, ha a 'buildType' paraméter 'Quick'?
+    # A) Igen
+    # B) Nem
+    # C) Hiba
+    # D) Függ a 'deployEnv'-től
+    # E) Függ a 'buildFlavor'-től
+    - ${{ if eq(parameters.buildType, 'Quick') }}:
+      - script: echo "7) Gyors építés van kiválasztva."
+        displayName: 'Gyors Építés Feltétel'
+
+    - script: |
+        echo "--- Runtime feltétel ---"
+        # Kérdés 8: Mi lesz az 'configMode' értéke ebben a feltételben?
+        # A) PROD
+        # B) Függ a 'deployEnv'-től
+        # C) Függ a 'configStatus'-tól
+        # D) Hiba
+        # E) Üres string
+        if [[ "$(configMode)" == "PROD" ]]; then
+          echo "8) A konfigurációs mód: Éles."
+        else
+          echo "8) A konfigurációs mód: Nem éles. Érték: $(configMode)"
+        fi
+      displayName: 'Runtime Konfigurációs Mód'
+
+    - script: |
+        echo "##vso[task.setvariable variable=buildOutput;isOutput=true]CompiledSuccessfully"
+      name: SetBuildOutput
+      displayName: 'Kimeneti Változó Beállítása'
+
+- stage: Deploy
+  displayName: 'Deployment Szakasz'
+  dependsOn: Build
+
+  jobs:
+  - job: DeployApp
+    displayName: 'App Telepítése Munka'
+    variables:
+      deployTarget: "ProductionServer" # Munka szintű változó
+    
+    steps:
+    - script: echo "--- Deployment Munka Változók ---"
+      displayName: 'Elválasztó'
+
+    # Kérdés 9: Mi lesz az 'appVersion' értéke ebben a szakaszban/munkában?
+    # A) 1.0.0
+    # B) 1.0.1
+    # C) 1.0.2
+    # D) Függ az előző szakasz kimenetétől
+    # E) Hiba
+    - script: echo "9) App Version in Deploy: $(appVersion)"
+      displayName: 'App Verzió Deploymentben'
+
+    # Kérdés 10: Mi lesz a 'buildOutput' értéke?
+    # A) Nincs definiálva
+    # B) CompiledSuccessfully
+    # C) Hiba
+    # D) Üres string
+    # E) Függ a paraméterektől
+    - script: echo "10) Build Output from Previous Stage: $[ dependencies.Build.outputs['Compile.SetBuildOutput.buildOutput'] ]"
+      displayName: 'Build Kimenet'
+
+    # Kérdés 11: Milyen értéket kap a 'deployTarget'?
+    # A) Dev
+    # B) QA
+    # C) Prod
+    # D) ProductionServer
+    # E) Hiba
+    - script: echo "11) Deploy Target: $(deployTarget)"
+      displayName: 'Deployment Cél'
+
+    # Kérdés 12: Mi lesz a 'deployEnv' paraméter értéke ebben a lépésben?
+    # A) Dev
+    # B) QA
+    # C) Prod
+    # D) Függ a buildtől
+    # E) Hiba
+    - script: echo "12) Deploy Environment Parameter: ${{ parameters.deployEnv }}"
+      displayName: 'Deployment Környezet Paraméter'
+
+    # Kérdés 13: Ez a lépés futni fog, ha a 'deployEnv' paraméter 'QA' ÉS a 'buildType' 'Full'?
+    # A) Igen
+    # B) Nem
+    # C) Hiba
+    # D) Csak ha a 'buildType' 'Full'
+    # E) Csak ha a 'deployEnv' 'QA'
+    - ${{ if and(eq(parameters.deployEnv, 'QA'), eq(parameters.buildType, 'Full')) }}:
+      - script: echo "13) QA Full Build telepítése."
+        displayName: 'QA Full Telepítés Feltétel'
