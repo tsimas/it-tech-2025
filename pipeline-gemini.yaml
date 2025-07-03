@@ -8,38 +8,23 @@ parameters:
     default: 'Dev'
 
 variables:
-  # 1) paraméterből vett érték (compile-time)
   - name: compileTimeVar
     value: ${{ parameters.env }}
-
-  # 2) compile-time format
   - name: compileExprVar
     value: ${{ format('CT-{0}', parameters.env) }}
-
-  # 3) compile-time if/else – az első példa
   - name: compileIfVar
     ${{ if eq(parameters.env, 'Dev') }}:
       value: DevelopmentMode
     ${{ else }}:
       value: ProductionMode
-
-  # 4) statikus literal változó
   - name: staticVar
     value: 'staticValue'
-
-  # 5) runtime format
   - name: runtimeConcatVar
     value: $[ format('RT-{0}', variables.staticVar) ]
-
-  # 6) makró-szintű változó
   - name: macroVar
     value: $(staticVar)
-
-  # 7) rendszer-változó
   - name: agentOSVar
     value: $(Agent.OS)
-
-  # 8) compile-time if/else – második példa, környezeti suffix
   - name: envSuffix
     ${{ if eq(parameters.env, 'Dev') }}:
       value: '-dev'
@@ -51,7 +36,6 @@ stages:
     displayName: 'Build Stage'
     jobs:
       - job: PrintVars
-        displayName: 'Print variables + conditions'
         pool:
           vmImage: 'ubuntu-latest'
         steps:
@@ -65,3 +49,27 @@ stages:
               echo "agentOSVar:       $(agentOSVar)"
               echo "envSuffix:        $(envSuffix)"
             displayName: 'Print all variables'
+
+  # --- Új, csak Dev környezetben futó stage ---
+  - stage: DevOnly
+    displayName: 'Dev Only Stage'
+    condition: eq(variables['compileTimeVar'], 'Dev')
+    jobs:
+      - job: EchoDev
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - script: echo "This is the Dev-only stage"
+            displayName: 'Dev echo'
+
+  # --- Új, csak nem-Dev környezetben (pl. Prod) futó stage ---
+  - stage: ProdOnly
+    displayName: 'Production Only Stage'
+    condition: ne(variables['compileTimeVar'], 'Dev')
+    jobs:
+      - job: EchoProd
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - script: echo "This is the Production-only stage"
+            displayName: 'Prod echo'
