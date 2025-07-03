@@ -10,15 +10,26 @@ parameters:
 variables:
   # 1) paraméterből vett érték (compile-time)
   compileTimeVar: ${{ parameters.env }}
+
   # 2) compile-time kifejezés format-tal
   compileExprVar: ${{ format('CT-{0}', parameters.env) }}
-  # 3) statikus literal változó
+
+  # 3) compile-time if-else (template expression)
+  compileIfVar: ${{ parameters.env == 'Dev' ? 'DevelopmentMode' : 'ProductionMode' }}
+
+  # 4) statikus literal változó
   staticVar: 'staticValue'
-  # 4) runtime kifejezés format-tal
+
+  # 5) runtime kifejezés format-tal
   runtimeConcatVar: $[ format('RT-{0}', variables['staticVar']) ]
-  # 5) makró-szintű változó (macro expression)
+
+  # 6) runtime if-else (runtime expression)
+  runtimeIfVar: $[ eq( variables['staticVar'], 'staticValue' ) ? 'Yes' : 'No' ]
+
+  # 7) makró-szintű változó
   macroVar: $(staticVar)
-  # 6) rendszer-változó (system variable)
+
+  # 8) rendszer-változó
   agentOSVar: $(Agent.OS)
 
 stages:
@@ -26,14 +37,16 @@ stages:
     displayName: 'Build Stage'
     jobs:
       - job: PrintVars
-        displayName: 'Print all variable types'
+        displayName: 'Print all variable types + conditions'
         pool:
           vmImage: 'ubuntu-latest'
         steps:
           - script: |
               echo "compileTimeVar:       $(compileTimeVar)"
               echo "compileExprVar:       $(compileExprVar)"
+              echo "compileIfVar:         $(compileIfVar)"
               echo "runtimeConcatVar:     $(runtimeConcatVar)"
+              echo "runtimeIfVar:         $(runtimeIfVar)"
               echo "macroVar:             $(macroVar)"
               echo "agentOSVar:           $(agentOSVar)"
             displayName: 'Print variables'
