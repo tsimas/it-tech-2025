@@ -22,7 +22,7 @@ variables:
   - name: runtimeConcatVar
     value: $[ format('RT-{0}', variables.staticVar) ]
   - name: macroVar
-    value: $(staticVar)
+    value: $(staticVar)        # ez runtime változóként staticValue-t ad
   - name: agentOSVar
     value: $(Agent.OS)
   - name: envSuffix
@@ -50,7 +50,6 @@ stages:
               echo "envSuffix:        $(envSuffix)"
             displayName: 'Print all variables'
 
-  # --- Új, csak Dev környezetben futó stage ---
   - stage: DevOnly
     displayName: 'Dev Only Stage'
     condition: eq(variables['compileTimeVar'], 'Dev')
@@ -62,7 +61,6 @@ stages:
           - script: echo "This is the Dev-only stage"
             displayName: 'Dev echo'
 
-  # --- Új, csak nem-Dev környezetben (pl. Prod) futó stage ---
   - stage: ProdOnly
     displayName: 'Production Only Stage'
     condition: ne(variables['compileTimeVar'], 'Dev')
@@ -73,3 +71,15 @@ stages:
         steps:
           - script: echo "This is the Production-only stage"
             displayName: 'Prod echo'
+
+  - stage: RuntimeConditional
+    displayName: 'Runtime Conditional Stage'
+    # Itt a macroVar értékétől (runtime) függ, ami a staticVar-t veszi át
+    condition: eq(variables['macroVar'], 'staticValue')
+    jobs:
+      - job: EchoRuntime
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - script: echo "This stage runs only if macroVar == staticValue"
+            displayName: 'Runtime echo'
